@@ -456,17 +456,49 @@ export default function FutureMDAcademySite() {
           </div>
 
           {(() => {
-            const testimonials = [
-              { quote: "I came in scoring just above 500 and honestly thought medical school was out of reach. My tutor built a study plan that didn’t overwhelm me and checked in weekly to make sure I was sticking with it. I started seeing progress in small steps, which made me believe I could really improve. By test day, I had climbed 13 points and felt proud instead of anxious walking into the exam.", name: "Riya P.", role: "Accepted to UA COM" },
-              { quote: "My B/B plateau broke after two sessions with a 132 scorer who showed me how to read passages like a scientist.", name: "Jason M.", role: "520 official" },
-              { quote: "I finally had a plan I could follow with school. The weekly check-ins kept me consistent.", name: "Amrita K.", role: "+12 point increase" },
-              { quote: "+14 points in 6 weeks. Custom passages and error logs made the difference.", name: "Lauren S.", role: "NYU applicant" },
-              { quote: "C/P clicked once we switched to a data-first approach. I hit 131 on my next FL.", name: "Marcus D.", role: "131 C/P" },
-              { quote: "I always felt stuck at 508. Pacing + reasoning drills took me to a 519 official.", name: "Sofia H.", role: "519 official" },
-              { quote: "Tutor matched me by personality and schedule. Studying finally felt sustainable and my stress dropped.", name: "Neha L.", role: "+11 point jump" },
-              { quote: "The passage-mapping method for B/B was a game changer. I stopped rereading and started answering with confidence.", name: "Caleb W.", role: "131 B/B" },
-              { quote: "Their weekly accountability texts kept me honest. Hit my 515 goal a month early.", name: "Janelle T.", role: "515 official" },
-            ];
+           const testimonials = [
+  {
+    quote: "I had taken the MCAT once before and plateaued at a 508. Working with my tutor completely changed how I approached passages and managed time. The strategies felt natural and I could finally apply them consistently. When I scored a 520 on my retake, it was proof that the system worked.",
+    name: "Jason M.",
+    role: "520 Official",
+  },
+  {
+    quote: "Trying to prep while juggling classes and work left me burned out. Future MD Academy gave me a schedule I could actually stick to and someone who kept me accountable. I learned to focus on the weak spots without getting lost in endless content review. The result was a 12-point increase and much more confidence heading into applications.",
+    name: "Amrita K.",
+    role: "+12 Point Increase",
+  },
+  {
+    quote: "I had been studying on my own for months without much progress. My tutor identified patterns in my mistakes that I never noticed myself. Once we targeted those, I felt more in control of my practice exams and less frustrated. The consistent improvement gave me the confidence to aim for schools I never thought possible.",
+    name: "Lauren S.",
+    role: "NYU Applicant",
+  },
+  {
+    quote: "Chem/Phys was the section I dreaded every single time. My tutor showed me how to simplify setups and recognize when estimation was enough. That single shift in approach boosted both my speed and accuracy. For the first time I felt calm going through the section, and scoring a 131 proved it paid off.",
+    name: "Marcus D.",
+    role: "131 C/P",
+  },
+  {
+    quote: "I was convinced I had peaked at 508 after months of prep. The coaching I got here wasn’t just about content but about mindset and pacing. I started practicing smarter instead of just harder, which made the long hours sustainable. On my official test I jumped to a 519, something I never imagined.",
+    name: "Sofia H.",
+    role: "519 Official",
+  },
+  {
+    quote: "The accountability in this program was a game changer. I knew I’d get a message checking in, so I pushed myself to complete the daily goals even when I was tired. My tutor’s encouragement kept me from giving up when I hit plateaus. At the end I had an 11-point score increase and a level of confidence I’d never had before.",
+    name: "Neha L.",
+    role: "+11 Point Jump",
+  },
+  {
+    quote: "Reading Bio/Biochem passages used to leave me overwhelmed and second-guessing every answer. My tutor introduced a passage-mapping method that gave me structure and focus. Instead of panicking, I knew exactly how to break things down. That clarity helped me earn consistent 131s in practice and on the real exam.",
+    name: "Caleb W.",
+    role: "131 B/B",
+  },
+  {
+    quote: "I worried tutoring would feel like another class, but it was completely tailored to me. The plan included realistic daily tasks and built-in check-ins that kept me accountable. I started hitting milestones earlier than expected and felt prepared rather than scrambling. Reaching my 515 goal ahead of schedule was the best feeling.",
+    name: "Janelle T.",
+    role: "515 Official",
+  },
+];
+
             const [idx, setIdx] = React.useState(0);
             const perSlide = 3;
             const totalSlides = Math.ceil(testimonials.length / perSlide);
