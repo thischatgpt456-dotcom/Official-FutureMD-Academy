@@ -218,14 +218,17 @@ export default function FutureMDAcademySite() {
       <div className="sticky top-0 z-40 w-full border-b border-white/10 bg-[var(--navy)]/90 backdrop-blur">
         <Container className="flex items-center justify-between py-4">
           <a href="#home" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--navy)]">
-              <GraduationCap className="h-6 w-6" />
-            </div>
-            <div className="text-white">
-              <div className="text-sm uppercase tracking-wider text-white/70">Future MD Academy</div>
-              <div className="-mt-1 text-lg font-extrabold">MCAT Tutoring</div>
-            </div>
-          </a>
+  <img
+    src="/logo.png"
+    alt="Future MD Academy"
+    className="h-16 w-16 object-contain"   // change to h-16 w-16 if you want bigger
+  />
+  <div className="text-white">
+    <div className="text-sm uppercase tracking-wider text-white/70">Future MD Academy</div>
+    <div className="-mt-1 text-lg font-extrabold">MCAT Tutoring</div>
+  </div>
+</a>
+
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-6 text-sm text-white/90 md:flex">
@@ -600,7 +603,7 @@ export default function FutureMDAcademySite() {
         <Container className="grid gap-8 py-10 md:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--navy)] text-white"><GraduationCap className="h-6 w-6" /></div>
+              <img src="/logo.png" alt="Future MD Academy" className="h-12 w-12 object-contain rounded-xl" />
               <div className="text-slate-900"><div className="text-lg font-extrabold">Future MD Academy</div><div className="text-xs text-slate-500">MCAT Tutoring</div></div>
             </div>
             <p className="mt-4 text-sm text-slate-600">Top 5% tutors. Top 1% section specialists. Guaranteed score growth.</p>
