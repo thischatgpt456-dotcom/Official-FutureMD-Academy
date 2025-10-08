@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet";
-import { motion } from "framer-motion";
+import { motion, useScroll, useSpring, useInView, useReducedMotion, animate } from "framer-motion";
 import {
   ArrowRight,
   Star,
@@ -32,10 +32,12 @@ const FORM_ENDPOINT = "https://formspree.io/f/your-id"; // replace with your for
 const Section = ({ id, children, className = "" }) => (
   <section id={id} className={`scroll-mt-24 py-20 ${className}`}>
     <motion.div
+      data-section-highlight
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
+      className="relative"
     >
       {children}
     </motion.div>
@@ -46,26 +48,102 @@ const Container = ({ children, className = "" }) => (
   <div className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>
 );
 
-const Pill = ({ children }) => (
-  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur">
-    {children}
-  </span>
-);
+const ScrollProgress = () => {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 24,
+    restDelta: 0.001,
+  });
 
-const Stat = ({ value, label }) => (
-  <div className="rounded-2xl bg-white/80 p-6 text-center shadow-sm ring-1 ring-black/5">
-    <div className="text-3xl font-extrabold text-slate-900">{value}</div>
-    <div className="mt-1 text-sm text-slate-600">{label}</div>
+  return (
+    <motion.div
+      aria-hidden
+      className="fixed left-0 top-0 z-[60] h-1 w-full origin-left bg-gradient-to-r from-[var(--gold)] via-amber-300 to-pink-300"
+      style={{ scaleX }}
+    />
+  );
+};
+
+const FloatingOrbs = () => (
+  <div aria-hidden className="pointer-events-none absolute inset-0">
+    <motion.div
+      className="absolute -top-20 left-[-10%] h-72 w-72 rounded-full opacity-40 blur-3xl"
+      style={{ background: "radial-gradient(circle, rgba(224,184,77,0.9) 0%, rgba(224,184,77,0) 70%)" }}
+      animate={{ x: [0, 30, -20, 0], y: [0, -10, 20, 0] }}
+      transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+    />
+    <motion.div
+      className="absolute bottom-[-25%] right-[-15%] h-[26rem] w-[26rem] rounded-full opacity-30 blur-3xl"
+      style={{ background: "radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(11,42,60,0) 70%)" }}
+      animate={{ x: [0, -40, 20, 0], y: [0, 30, -20, 0] }}
+      transition={{ duration: 28, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+    />
+    <motion.div
+      className="absolute top-1/2 left-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-3xl"
+      style={{ background: "radial-gradient(circle, rgba(129,207,255,0.8) 0%, rgba(129,207,255,0) 70%)" }}
+      animate={{ rotate: [0, 360] }}
+      transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+    />
   </div>
 );
 
+const Pill = ({ children }) => (
+  <motion.span
+    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur"
+    initial={{ opacity: 0, y: -6 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, ease: "easeOut" }}
+  >
+    {children}
+  </motion.span>
+);
+
+const Stat = ({ target, label, prefix = "", suffix = "" }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.6 });
+  const prefersReducedMotion = useReducedMotion();
+  const [display, setDisplay] = useState(prefersReducedMotion ? target : 0);
+
+  useEffect(() => {
+    if (!isInView || prefersReducedMotion) return;
+    const controls = animate(0, target, {
+      duration: 1.2,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplay(v),
+    });
+    return () => controls.stop();
+  }, [isInView, prefersReducedMotion, target]);
+
+  const valueToRender = prefersReducedMotion ? target : Math.round(display);
+
+  return (
+    <motion.div
+      ref={ref}
+      className="rounded-2xl bg-white/80 p-6 text-center shadow-sm ring-1 ring-black/5"
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.5 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <div className="text-3xl font-extrabold text-slate-900">
+        {prefix}
+        <span className="text-[var(--gold)]">{valueToRender.toLocaleString()}</span>
+        {suffix}
+      </div>
+      <div className="mt-1 text-sm text-slate-600">{label}</div>
+    </motion.div>
+  );
+};
+
 const FeatureCard = ({ icon: Icon, title, children }) => (
   <motion.div
-    className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5 transition hover:shadow-md"
+    className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5 transition"
     initial={{ opacity: 0, y: 14 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true, amount: 0.2 }}
     transition={{ duration: 0.45, ease: "easeOut" }}
+    whileHover={{ y: -8, scale: 1.02, boxShadow: "0 30px 60px -24px rgba(11,42,60,0.25)" }}
   >
     <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--gold)]/15 text-[var(--navy)]">
       <Icon className="h-6 w-6" />
@@ -82,6 +160,7 @@ const HowStep = ({ step, title, children }) => (
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true, amount: 0.2 }}
     transition={{ duration: 0.45, ease: "easeOut" }}
+    whileHover={{ y: -6, scale: 1.01, boxShadow: "0 25px 50px -30px rgba(11,42,60,0.25)" }}
   >
     <div className="absolute -top-4 left-6 rounded-full bg-[var(--gold)] px-3 py-1 text-xs font-bold text-[var(--navy)]">STEP {step}</div>
     <h4 className="mt-2 text-base font-semibold text-slate-900">{title}</h4>
@@ -96,6 +175,7 @@ const TestimonialCard = ({ quote, name, role, compact = false }) => (
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true, amount: 0.2 }}
     transition={{ duration: 0.4, ease: "easeOut" }}
+    whileHover={{ y: -6, scale: 1.01 }}
   >
     <p className="text-slate-700">“{quote}”</p>
     <div className="mt-4 flex items-center gap-3">
@@ -122,6 +202,176 @@ const FAQItem = ({ q, a }) => (
     <p className="mt-3 text-slate-600">{a}</p>
   </details>
 );
+
+const testimonials = [
+  {
+    quote:
+      "I had taken the MCAT once before and plateaued at a 508. Working with my tutor completely changed how I approached passages and managed time. The strategies felt natural and I could finally apply them consistently. When I scored a 520 on my retake, it was proof that the system worked.",
+    name: "Jason M.",
+    role: "520 Official",
+  },
+  {
+    quote:
+      "Trying to prep while juggling classes and work left me burned out. Future MD Academy gave me a schedule I could actually stick to and someone who kept me accountable. I learned to focus on the weak spots without getting lost in endless content review. The result was a 12-point increase and much more confidence heading into applications.",
+    name: "Amrita K.",
+    role: "+12 Point Increase",
+  },
+  {
+    quote:
+      "I had been studying on my own for months without much progress. My tutor identified patterns in my mistakes that I never noticed myself. Once we targeted those, I felt more in control of my practice exams and less frustrated. The consistent improvement gave me the confidence to aim for schools I never thought possible.",
+    name: "Lauren S.",
+    role: "NYU Applicant",
+  },
+  {
+    quote:
+      "Chem/Phys was the section I dreaded every single time. My tutor showed me how to simplify setups and recognize when estimation was enough. That single shift in approach boosted both my speed and accuracy. For the first time I felt calm going through the section, and scoring a 131 proved it paid off.",
+    name: "Marcus D.",
+    role: "131 C/P",
+  },
+  {
+    quote:
+      "I was convinced I had peaked at 508 after months of prep. The coaching I got here wasn’t just about content but about mindset and pacing. I started practicing smarter instead of just harder, which made the long hours sustainable. On my official test I jumped to a 519, something I never imagined.",
+    name: "Sofia H.",
+    role: "519 Official",
+  },
+  {
+    quote:
+      "The accountability in this program was a game changer. I knew I’d get a message checking in, so I pushed myself to complete the daily goals even when I was tired. My tutor’s encouragement kept me from giving up when I hit plateaus. At the end I had an 11-point score increase and a level of confidence I’d never had before.",
+    name: "Neha L.",
+    role: "+11 Point Jump",
+  },
+  {
+    quote:
+      "Reading Bio/Biochem passages used to leave me overwhelmed and second-guessing every answer. My tutor introduced a passage-mapping method that gave me structure and focus. Instead of panicking, I knew exactly how to break things down. That clarity helped me earn consistent 131s in practice and on the real exam.",
+    name: "Caleb W.",
+    role: "131 B/B",
+  },
+  {
+    quote:
+      "I worried tutoring would feel like another class, but it was completely tailored to me. The plan included realistic daily tasks and built-in check-ins that kept me accountable. I started hitting milestones earlier than expected and felt prepared rather than scrambling. Reaching my 515 goal ahead of schedule was the best feeling.",
+    name: "Janelle T.",
+    role: "515 Official",
+  },
+];
+
+const trustSignals = [
+  { icon: ShieldCheck, label: "Guaranteed Score Growth" },
+  { icon: Award, label: "Top 5% Tutors" },
+  { icon: Rocket, label: "Fast Score Momentum" },
+  { icon: HeartHandshake, label: "Compatibility Match" },
+];
+
+const TestimonialCarousel = () => {
+  const perSlide = 3;
+  const totalSlides = Math.ceil(testimonials.length / perSlide);
+  const [index, setIndex] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion || totalSlides <= 1) return;
+    const id = setInterval(() => {
+      setIndex((prev) => (prev + 1) % totalSlides);
+    }, 6000);
+    return () => clearInterval(id);
+  }, [prefersReducedMotion, totalSlides]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(pointer: coarse)");
+    const update = () => setIsTouch(query.matches);
+    update();
+    if (query.addEventListener) {
+      query.addEventListener("change", update);
+      return () => query.removeEventListener("change", update);
+    }
+    query.addListener(update);
+    return () => query.removeListener(update);
+  }, []);
+
+  const slideTo = (n) => setIndex((n + totalSlides) % totalSlides);
+
+  const handleDragEnd = useCallback(
+    (_, info) => {
+      if (!isTouch) return;
+      if (Math.abs(info.offset.x) < 50) return;
+      setIndex((prev) => (prev + (info.offset.x < 0 ? 1 : -1) + totalSlides) % totalSlides);
+    },
+    [isTouch, totalSlides]
+  );
+
+  return (
+    <div className="mt-10">
+      <div className="relative overflow-hidden">
+        <motion.div
+          className="flex"
+          animate={{ x: `-${(index * 100) / totalSlides}%` }}
+          transition={{ type: "spring", stiffness: 90, damping: 20 }}
+          drag={isTouch ? "x" : false}
+          dragConstraints={isTouch ? { left: 0, right: 0 } : undefined}
+          dragElastic={0.18}
+          dragTransition={{ bounceDamping: 20, bounceStiffness: 180 }}
+          onDragEnd={handleDragEnd}
+          style={{ width: `${100 * totalSlides}%`, touchAction: isTouch ? "pan-y" : "auto" }}
+        >
+          {Array.from({ length: totalSlides }).map((_, slide) => (
+            <div
+              key={slide}
+              className="grid shrink-0 grid-cols-1 gap-6 px-2 md:grid-cols-3"
+              style={{ width: `${100 / totalSlides}%` }}
+            >
+              {testimonials
+                .slice(slide * perSlide, slide * perSlide + perSlide)
+                .map((t, i) => (
+                  <TestimonialCard key={`${slide}-${i}`} quote={t.quote} name={t.name} role={t.role} compact />
+                ))}
+            </div>
+          ))}
+        </motion.div>
+
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[var(--light)] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[var(--light)] to-transparent" />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex gap-2">
+          <motion.button
+            type="button"
+            onClick={() => slideTo(index - 1)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm"
+            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            aria-label="Previous testimonials"
+          >
+            ‹
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => slideTo(index + 1)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm"
+            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            aria-label="Next testimonials"
+          >
+            ›
+          </motion.button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {Array.from({ length: totalSlides }).map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => slideTo(i)}
+              className={`h-2.5 w-6 rounded-full transition ${i === index ? "bg-[var(--navy)]" : "bg-slate-300"}`}
+              aria-label={`Go to slide ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ========= Pricing helpers =========
 function formatUSD(n) {
@@ -153,8 +403,10 @@ function LineItem({ label, value, bold = false, accent }) {
 }
 function RadioRow({ label, caption, right, selected, onSelect }) {
   return (
-    <button
+    <motion.button
       onClick={onSelect}
+      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.01 }}
       className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${
         selected ? "border-fuchsia-300 bg-fuchsia-50 ring-1 ring-fuchsia-200" : "border-neutral-200 hover:bg-neutral-50"
       }`}
@@ -164,7 +416,7 @@ function RadioRow({ label, caption, right, selected, onSelect }) {
         {caption && <div className="text-xs text-neutral-500">{caption}</div>}
       </div>
       <div className="text-sm font-semibold">{right}</div>
-    </button>
+    </motion.button>
   );
 }
 
@@ -173,6 +425,8 @@ export default function FutureMDAcademySite() {
   const [open, setOpen] = useState(false);
   const [hours, setHours] = useState(15);
   const [installments, setInstallments] = useState(null);
+  const highlightTimeout = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   const rate = getSmoothRate(hours);
   const subtotal = hours * rate;
@@ -202,8 +456,66 @@ export default function FutureMDAcademySite() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (highlightTimeout.current) {
+        clearTimeout(highlightTimeout.current);
+      }
+    };
+  }, []);
+
+  const handleAnchorNavigation = useCallback(
+    (event) => {
+      const href = event.currentTarget.getAttribute("href");
+      if (!href || !href.startsWith("#")) return;
+      event.preventDefault();
+
+      if (typeof window === "undefined") return;
+
+      const targetId = href.slice(1);
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+
+      if (window.history?.pushState) {
+        window.history.pushState(null, "", href);
+      } else {
+        window.location.hash = targetId;
+      }
+
+      if (reduceMotion) return;
+
+      const highlightEl = target.querySelector("[data-section-highlight]") || target;
+      if (!highlightEl || !highlightEl.animate) return;
+
+      if (highlightTimeout.current) {
+        clearTimeout(highlightTimeout.current);
+      }
+
+      highlightTimeout.current = window.setTimeout(() => {
+        highlightEl.animate(
+          [
+            { boxShadow: "0 0 0 0 rgba(224,184,77,0)", backgroundColor: "transparent" },
+            {
+              boxShadow: "0 28px 60px -40px rgba(224,184,77,0.6)",
+              backgroundColor: "rgba(224,184,77,0.15)",
+            },
+            { boxShadow: "0 0 0 0 rgba(224,184,77,0)", backgroundColor: "transparent" },
+          ],
+          {
+            duration: 900,
+            easing: "ease-out",
+          }
+        );
+      }, 120);
+    },
+    [reduceMotion]
+  );
+
   return (
     <div className="min-h-screen scroll-smooth bg-[var(--light)] [--navy:#0b2a3c] [--gold:#e0b84d]">
+      <ScrollProgress />
       {/* SEO */}
       <Helmet>
         <title>Future MD Academy — MCAT Tutoring</title>
@@ -217,7 +529,7 @@ export default function FutureMDAcademySite() {
       {/* Top bar */}
       <div className="sticky top-0 z-40 w-full border-b border-white/10 bg-[var(--navy)]/90 backdrop-blur">
         <Container className="flex items-center justify-between py-4">
-          <a href="#home" className="flex items-center gap-3">
+          <a href="#home" className="flex items-center gap-3" onClick={handleAnchorNavigation}>
   <img
     src="/logo.png"
     alt="Future MD Academy"
@@ -232,33 +544,79 @@ export default function FutureMDAcademySite() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-6 text-sm text-white/90 md:flex">
-            <a href="#services" className="hover:text-white">Services</a>
-            <a href="#how" className="hover:text-white">How it Works</a>
-            <a href="#guarantee" className="hover:text-white">Guarantee</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
-            <a href="#faq" className="hover:text-white">FAQ</a>
-            <a href="#contact" className="rounded-xl bg-[var(--gold)] px-4 py-2 font-semibold text-[var(--navy)] hover:opacity-90">Free Consultation</a>
+            {[ 
+              { href: "#services", label: "Services" },
+              { href: "#how", label: "How it Works" },
+              { href: "#guarantee", label: "Guarantee" },
+              { href: "#pricing", label: "Pricing" },
+              { href: "#faq", label: "FAQ" },
+            ].map((item) => (
+              <motion.a
+                key={item.href}
+                href={item.href}
+                whileHover={{ opacity: 1, y: -2 }}
+                className="transition hover:text-white"
+                onClick={handleAnchorNavigation}
+              >
+                {item.label}
+              </motion.a>
+            ))}
+            <motion.a
+              href="#contact"
+              className="rounded-xl bg-[var(--gold)] px-4 py-2 font-semibold text-[var(--navy)]"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleAnchorNavigation}
+            >
+              Free Consultation
+            </motion.a>
           </nav>
 
           {/* Mobile menu */}
-          <button
+          <motion.button
             className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 text-white"
             aria-label="Toggle menu"
+            whileTap={{ scale: 0.9 }}
             onClick={() => setOpen((v) => !v)}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          </motion.button>
         </Container>
         {open && (
           <div className="md:hidden border-t border-white/10 bg-[var(--navy)]/95">
             <Container className="py-3">
               <div className="flex flex-col gap-2 text-white/90">
-                <a href="#services" onClick={() => setOpen(false)} className="py-2">Services</a>
-                <a href="#how" onClick={() => setOpen(false)} className="py-2">How it Works</a>
-                <a href="#guarantee" onClick={() => setOpen(false)} className="py-2">Guarantee</a>
-                <a href="#pricing" onClick={() => setOpen(false)} className="py-2">Pricing</a>
-                <a href="#faq" onClick={() => setOpen(false)} className="py-2">FAQ</a>
-                <a href="#contact" onClick={() => setOpen(false)} className="mt-2 inline-flex items-center justify-center rounded-xl bg-[var(--gold)] px-4 py-2 font-semibold text-[var(--navy)]">Free Consultation</a>
+                {[ 
+                  { href: "#services", label: "Services" },
+                  { href: "#how", label: "How it Works" },
+                  { href: "#guarantee", label: "Guarantee" },
+                  { href: "#pricing", label: "Pricing" },
+                  { href: "#faq", label: "FAQ" },
+                ].map((item) => (
+                  <motion.a
+                    key={item.href}
+                    href={item.href}
+                    className="py-2"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={(event) => {
+                      handleAnchorNavigation(event);
+                      setOpen(false);
+                    }}
+                  >
+                    {item.label}
+                  </motion.a>
+                ))}
+                <motion.a
+                  href="#contact"
+                  onClick={(event) => {
+                    handleAnchorNavigation(event);
+                    setOpen(false);
+                  }}
+                  className="mt-2 inline-flex items-center justify-center rounded-xl bg-[var(--gold)] px-4 py-2 font-semibold text-[var(--navy)]"
+                  whileTap={{ scale: 0.96 }}
+                >
+                  Free Consultation
+                </motion.a>
               </div>
             </Container>
           </div>
@@ -267,6 +625,7 @@ export default function FutureMDAcademySite() {
 
       {/* Hero */}
       <Section id="home" className="relative overflow-hidden bg-[var(--navy)]">
+        <FloatingOrbs />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80rem_40rem_at_50%_-10%,rgba(255,255,255,0.18),transparent)]" />
         <Container>
           <div className="grid items-center gap-12 py-6 md:grid-cols-2">
@@ -282,18 +641,39 @@ export default function FutureMDAcademySite() {
                 One-on-one tutoring with specialists for C/P, CARS, B/B, and P/S, custom study plans, and test-taking systems built by 100th percentile scorers.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a href="#contact" className="inline-flex items-center gap-2 rounded-2xl bg-[var(--gold)] px-5 py-3 font-semibold text-[var(--navy)] shadow-sm hover:opacity-90">Get Your FREE Consultation <ArrowRight className="h-5 w-5" /></a>
-                <a href="#services" className="inline-flex items-center gap-2 rounded-2xl border border-white/20 px-5 py-3 font-semibold text-white hover:bg-white/10">Explore Our Programs</a>
+                <motion.a
+                  href="#contact"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-[var(--gold)] px-5 py-3 font-semibold text-[var(--navy)] shadow-sm"
+                  whileHover={{ scale: 1.03, boxShadow: "0 25px 40px -20px rgba(224,184,77,0.45)" }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleAnchorNavigation}
+                >
+                  Get Your FREE Consultation <ArrowRight className="h-5 w-5" />
+                </motion.a>
+                <motion.a
+                  href="#services"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/20 px-5 py-3 font-semibold text-white"
+                  whileHover={{ backgroundColor: "rgba(255,255,255,0.12)", scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleAnchorNavigation}
+                >
+                  Explore Our Programs
+                </motion.a>
               </div>
               <div className="mt-8 grid max-w-xl grid-cols-3 gap-4">
-                <Stat value={<span className="text-[var(--gold)]">518+</span>} label="Tutor composite scores" />
-                <Stat value={<span className="text-[var(--gold)]">131/132</span>} label="Section subscores" />
-                <Stat value={<span className="text-[var(--gold)]">+10</span>} label="Point Guarantee" />
+                <Stat target={518} suffix="+" label="Tutor composite scores" />
+                <Stat target={131} suffix="/132" label="Section subscores" />
+                <Stat prefix="+" target={10} label="Point Guarantee" />
               </div>
             </motion.div>
 
             {/* Student Score Trend card */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -8 }}
+            >
               <div className="relative rounded-3xl bg-white/10 p-2 shadow-2xl ring-1 ring-white/20">
                 <div className="rounded-2xl bg-white p-6 text-[var(--navy)]">
                   <div className="flex items-center justify-between">
@@ -329,10 +709,19 @@ export default function FutureMDAcademySite() {
       <div className="border-y bg-white">
         <Container>
           <div className="flex flex-wrap items-center justify-center gap-6 py-6 text-slate-500">
-            <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5"/> Guaranteed Score Growth</div>
-            <div className="flex items-center gap-2"><Award className="h-5 w-5"/> Top 5% Tutors</div>
-            <div className="flex items-center gap-2"><Rocket className="h-5 w-5"/> Fast Score Momentum</div>
-            <div className="flex items-center gap-2"><HeartHandshake className="h-5 w-5"/> Compatibility Match</div>
+            {trustSignals.map(({ icon: Icon, label }, idx) => (
+              <motion.div
+                key={label}
+                className="flex items-center gap-2"
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.45, delay: idx * 0.08, ease: "easeOut" }}
+                whileHover={{ scale: 1.04 }}
+              >
+                <Icon className="h-5 w-5 text-[var(--navy)]" /> {label}
+              </motion.div>
+            ))}
           </div>
         </Container>
       </div>
@@ -409,9 +798,23 @@ export default function FutureMDAcademySite() {
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-neutral-400" /><p className="text-sm font-medium">Select Your Tutoring Hours</p></div>
                   <div className="flex items-center gap-3">
-                    <button onClick={() => setHours((h) => Math.max(0, h - 1))} className="rounded-full border border-neutral-200 p-1 hover:bg-neutral-50" aria-label="decrease hours"><Minus className="h-4 w-4" /></button>
+                    <motion.button
+                      onClick={() => setHours((h) => Math.max(0, h - 1))}
+                      className="rounded-full border border-neutral-200 p-1 hover:bg-neutral-50"
+                      aria-label="decrease hours"
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </motion.button>
                     <div className="min-w-10 text-center text-lg font-semibold">{hours}</div>
-                    <button onClick={() => setHours((h) => Math.min(120, h + 1))} className="rounded-full border border-neutral-200 p-1 hover:bg-neutral-50" aria-label="increase hours"><Plus className="h-4 w-4" /></button>
+                    <motion.button
+                      onClick={() => setHours((h) => Math.min(120, h + 1))}
+                      className="rounded-full border border-neutral-200 p-1 hover:bg-neutral-50"
+                      aria-label="increase hours"
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </motion.button>
                   </div>
                 </div>
                 <input type="range" min={0} max={120} step={1} value={hours} onChange={(e) => setHours(parseInt(e.target.value))} className="w-full accent-[var(--gold)]" />
@@ -440,7 +843,15 @@ export default function FutureMDAcademySite() {
                   ))}
                 </div>
               </div>
-              <a href="#contact" className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--navy)] px-4 py-3 font-semibold text-white shadow-sm hover:opacity-90">Start now — lock in {hours} hours</a>
+              <motion.a
+                href="#contact"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[var(--navy)] px-4 py-3 font-semibold text-white shadow-sm"
+                whileHover={{ scale: 1.01, boxShadow: "0 20px 45px -25px rgba(11,42,60,0.45)" }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleAnchorNavigation}
+              >
+                Start now — lock in {hours} hours
+              </motion.a>
               <p className="mt-3 text-center text-xs text-neutral-500">No interest. No hidden fees. You can edit your plan anytime.</p>
             </motion.div>
           </div>
@@ -455,112 +866,7 @@ export default function FutureMDAcademySite() {
             <p className="mt-3 text-slate-600">Real outcomes from tailored coaching.</p>
           </div>
 
-          {(() => {
-           const testimonials = [
-  {
-    quote: "I had taken the MCAT once before and plateaued at a 508. Working with my tutor completely changed how I approached passages and managed time. The strategies felt natural and I could finally apply them consistently. When I scored a 520 on my retake, it was proof that the system worked.",
-    name: "Jason M.",
-    role: "520 Official",
-  },
-  {
-    quote: "Trying to prep while juggling classes and work left me burned out. Future MD Academy gave me a schedule I could actually stick to and someone who kept me accountable. I learned to focus on the weak spots without getting lost in endless content review. The result was a 12-point increase and much more confidence heading into applications.",
-    name: "Amrita K.",
-    role: "+12 Point Increase",
-  },
-  {
-    quote: "I had been studying on my own for months without much progress. My tutor identified patterns in my mistakes that I never noticed myself. Once we targeted those, I felt more in control of my practice exams and less frustrated. The consistent improvement gave me the confidence to aim for schools I never thought possible.",
-    name: "Lauren S.",
-    role: "NYU Applicant",
-  },
-  {
-    quote: "Chem/Phys was the section I dreaded every single time. My tutor showed me how to simplify setups and recognize when estimation was enough. That single shift in approach boosted both my speed and accuracy. For the first time I felt calm going through the section, and scoring a 131 proved it paid off.",
-    name: "Marcus D.",
-    role: "131 C/P",
-  },
-  {
-    quote: "I was convinced I had peaked at 508 after months of prep. The coaching I got here wasn’t just about content but about mindset and pacing. I started practicing smarter instead of just harder, which made the long hours sustainable. On my official test I jumped to a 519, something I never imagined.",
-    name: "Sofia H.",
-    role: "519 Official",
-  },
-  {
-    quote: "The accountability in this program was a game changer. I knew I’d get a message checking in, so I pushed myself to complete the daily goals even when I was tired. My tutor’s encouragement kept me from giving up when I hit plateaus. At the end I had an 11-point score increase and a level of confidence I’d never had before.",
-    name: "Neha L.",
-    role: "+11 Point Jump",
-  },
-  {
-    quote: "Reading Bio/Biochem passages used to leave me overwhelmed and second-guessing every answer. My tutor introduced a passage-mapping method that gave me structure and focus. Instead of panicking, I knew exactly how to break things down. That clarity helped me earn consistent 131s in practice and on the real exam.",
-    name: "Caleb W.",
-    role: "131 B/B",
-  },
-  {
-    quote: "I worried tutoring would feel like another class, but it was completely tailored to me. The plan included realistic daily tasks and built-in check-ins that kept me accountable. I started hitting milestones earlier than expected and felt prepared rather than scrambling. Reaching my 515 goal ahead of schedule was the best feeling.",
-    name: "Janelle T.",
-    role: "515 Official",
-  },
-];
-
-            const [idx, setIdx] = React.useState(0);
-            const perSlide = 3;
-            const totalSlides = Math.ceil(testimonials.length / perSlide);
-            const slideTo = (n) => setIdx((prev) => (n + totalSlides) % totalSlides);
-
-            return (
-              <div className="mt-10">
-                <div className="relative overflow-hidden">
-                  <motion.div
-                    className="flex"
-                    animate={{ x: `-${(idx * 100) / totalSlides}%` }}
-                    transition={{ type: "tween", ease: "easeInOut", duration: 0.45 }}
-                    style={{ width: `${100 * totalSlides}%` }}
-                  >
-                    {Array.from({ length: totalSlides }).map((_, slide) => (
-                      <div
-                        key={slide}
-                        className="grid shrink-0 grid-cols-1 gap-6 px-2 md:grid-cols-3"
-                        style={{ width: `${100 / totalSlides}%` }}
-                      >
-                        {testimonials
-                          .slice(slide * perSlide, slide * perSlide + perSlide)
-                          .map((t, i) => (
-                            <TestimonialCard key={`${slide}-${i}`} quote={t.quote} name={t.name} role={t.role} compact />
-                          ))}
-                      </div>
-                    ))}
-                  </motion.div>
-
-                  <div className="mt-6 flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => slideTo(idx - 1)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
-                        aria-label="Previous"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        onClick={() => slideTo(idx + 1)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
-                        aria-label="Next"
-                      >
-                        ›
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalSlides }).map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => slideTo(i)}
-                          className={`h-2.5 w-6 rounded-full transition ${i === idx ? 'bg-[var(--navy)]' : 'bg-slate-300'}`}
-                          aria-label={`Go to slide ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+          <TestimonialCarousel />
         </Container>
       </Section>
 
@@ -595,7 +901,14 @@ export default function FutureMDAcademySite() {
                 <input name="phone" placeholder="Phone (optional)" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[var(--navy)]" />
                 <input name="test_date" placeholder="Target MCAT date (e.g., June 28, 2026)" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[var(--navy)]" />
                 <textarea required name="message" rows={5} placeholder="Tell us about your goals and biggest hurdles" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[var(--navy)]" />
-                <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--navy)] px-5 py-3 font-semibold text-white hover:opacity-90">Request Consultation <ArrowRight className="h-5 w-5" /></button>
+                <motion.button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--navy)] px-5 py-3 font-semibold text-white"
+                  whileHover={{ scale: 1.02, boxShadow: "0 18px 35px -20px rgba(11,42,60,0.45)" }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Request Consultation <ArrowRight className="h-5 w-5" />
+                </motion.button>
               </div>
               <p className="mt-3 text-xs text-slate-500">By submitting, you agree to be contacted about scheduling and services. No spam ever.</p>
             </form>
@@ -643,9 +956,9 @@ export default function FutureMDAcademySite() {
           <div>
             <div className="text-sm font-semibold text-slate-900">Company</div>
             <ul className="mt-3 space-y-2 text-sm text-slate-600">
-              <li><a href="#services" className="hover:text-slate-900">Services</a></li>
-              <li><a href="#pricing" className="hover:text-slate-900">Pricing</a></li>
-              <li><a href="#faq" className="hover:text-slate-900">FAQ</a></li>
+              <li><a href="#services" className="hover:text-slate-900" onClick={handleAnchorNavigation}>Services</a></li>
+              <li><a href="#pricing" className="hover:text-slate-900" onClick={handleAnchorNavigation}>Pricing</a></li>
+              <li><a href="#faq" className="hover:text-slate-900" onClick={handleAnchorNavigation}>FAQ</a></li>
             </ul>
           </div>
           <div>
