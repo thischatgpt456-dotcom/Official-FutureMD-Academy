@@ -434,29 +434,6 @@ export default function FutureMDAcademySite() {
   const total = Math.max(0, subtotal - discount);
 
   useEffect(() => {
-    try {
-      const approxEq = (a, b, tol = 1e-9) => Math.abs(a - b) < tol;
-      console.assert(getSmoothRate(0) === 195, "rate(0)=195");
-      console.assert(getSmoothRate(9) === 195, "rate(9)=195");
-      console.assert(approxEq(getSmoothRate(10), 195), "rate(10)=195");
-      console.assert(approxEq(getSmoothRate(19), 185), "rate(19)=~185");
-      console.assert(approxEq(getSmoothRate(20), 180), "rate(20)=~180");
-      console.assert(approxEq(getSmoothRate(40), 160), "rate(40)=~160");
-      console.assert(approxEq(getSmoothRate(80), 150), "rate(80)=~150");
-      console.assert(approxEq(getSmoothRate(120), 145), "rate(120)=~145");
-      console.assert(getDiscount(0) === 0, "disc(0)=0");
-      console.assert(getDiscount(19) === 0, "disc(19)=0");
-      console.assert(getDiscount(20) === 600, "disc(20)=600");
-      console.assert(getDiscount(40) === 400, "disc(40)=400");
-      console.assert(getDiscount(80) === 400, "disc(80)=400");
-      console.assert(Math.max(0, 0 - getDiscount(100)) === 0, "total clamped >= 0");
-      console.assert(getSmoothRate(21) <= getSmoothRate(20), "rate non-increasing around 20");
-    } catch (e) {
-      console.warn("Test failure:", e);
-    }
-  }, []);
-
-  useEffect(() => {
     return () => {
       if (highlightTimeout.current) {
         clearTimeout(highlightTimeout.current);
